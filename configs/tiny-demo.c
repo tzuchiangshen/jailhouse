@@ -26,7 +26,7 @@ struct {
 } ALIGN config = {
 	.cell = {
 		.name = "Tiny Demo",
-		.flags = JAILHOUSE_CELL_UNMANAGED_EXIT,
+		.flags = JAILHOUSE_CELL_NO_COMM_REGION,
 
 		.cpu_set_size = sizeof(config.cpus),
 		.num_memory_regions = ARRAY_SIZE(config.mem_regions),
