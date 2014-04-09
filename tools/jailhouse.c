@@ -30,6 +30,8 @@ static void help(const char *progname)
 	       "   disable\n"
 	       "   cell create CONFIGFILE IMAGE [-l ADDRESS] "
 			"[IMAGE [-l ADDRESS] ...]\n"
+	       "   cell reload CONFIGFILE IMAGE [-l ADDRESS] "
+			"[IMAGE [-l ADDRESS] ...]\n"
 	       "   cell destroy CONFIGFILE\n",
 	       progname);
 }
@@ -106,7 +108,7 @@ static int enable(int argc, char *argv[])
 	return err;
 }
 
-static int cell_create(int argc, char *argv[])
+static int cell_create_reload(int argc, char *argv[], unsigned int service)
 {
 	struct jailhouse_preload_image *image;
 	struct jailhouse_cell_init *cell_init;
@@ -168,9 +170,10 @@ static int cell_create(int argc, char *argv[])
 
 	fd = open_dev();
 
-	err = ioctl(fd, JAILHOUSE_CELL_CREATE, cell_init);
+	err = ioctl(fd, service, cell_init);
 	if (err)
-		perror("JAILHOUSE_CELL_CREATE");
+		perror(service == JAILHOUSE_CELL_CREATE ?
+		       "JAILHOUSE_CELL_CREATE" : "JAILHOUSE_CELL_RELOAD");
 
 	close(fd);
 	free((void *)(unsigned long)cell_init->config.address);
@@ -217,7 +220,9 @@ static int cell_management(int argc, char *argv[])
 	}
 
 	if (strcmp(argv[2], "create") == 0)
-		err = cell_create(argc, argv);
+		err = cell_create_reload(argc, argv, JAILHOUSE_CELL_CREATE);
+	else if (strcmp(argv[2], "reload") == 0)
+		err = cell_create_reload(argc, argv, JAILHOUSE_CELL_RELOAD);
 	else if (strcmp(argv[2], "destroy") == 0)
 		err = cell_destroy(argc, argv);
 	else {

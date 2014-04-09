@@ -35,4 +35,5 @@ struct jailhouse_cell_init {
 #define JAILHOUSE_ENABLE		_IOW(0, 0, struct jailhouse_system)
 #define JAILHOUSE_DISABLE		_IO(0, 1)
 #define JAILHOUSE_CELL_CREATE		_IOW(0, 2, struct jailhouse_cell_init)
+#define JAILHOUSE_CELL_RELOAD		_IOW(0, 3, struct jailhouse_cell_init)
 #define JAILHOUSE_CELL_DESTROY		_IOW(0, 4, struct jailhouse_cell_cfg)

@@ -627,6 +627,60 @@ error_put_cell_obj:
 	goto unlock_out;
 }
 
+static int jailhouse_cell_reload(struct jailhouse_cell_init __user *arg)
+{
+	struct jailhouse_preload_image __user *image = arg->image;
+	struct jailhouse_cell_init cell_init;
+	struct jailhouse_cell_desc *config;
+	struct cell *cell;
+	unsigned int n;
+	int err;
+
+	if (copy_from_user(&cell_init, arg, sizeof(cell_init)))
+		return -EFAULT;
+
+	err = get_config(cell_init.config, &config);
+	if (err)
+		return err;
+
+	if (mutex_lock_interruptible(&lock) != 0) {
+		err = -EINTR;
+		goto kfree_config_out;
+	}
+
+	if (!enabled) {
+		err = -EINVAL;
+		goto unlock_out;
+	}
+
+	cell = find_cell(config);
+	if (!cell) {
+		err = -ENOENT;
+		goto unlock_out;
+	}
+
+	err = jailhouse_call_arg(JAILHOUSE_HC_CELL_RELOAD, cell->id);
+	if (err)
+		goto unlock_out;
+
+	for (n = cell_init.num_preload_images; n > 0; n--, image++) {
+		err = load_image(config, image);
+		if (err)
+			goto unlock_out;
+	}
+
+	err = jailhouse_call_arg(JAILHOUSE_HC_CELL_START, cell->id);
+
+unlock_out:
+	mutex_unlock(&lock);
+
+kfree_config_out:
+	kfree(config);
+
+	return err;
+
+}
+
 static int jailhouse_cell_destroy(const struct jailhouse_cell_cfg __user *arg)
 {
 	struct jailhouse_cell_desc *config;
@@ -699,6 +753,10 @@ static long jailhouse_ioctl(struct file *file, unsigned int ioctl,
 		break;
 	case JAILHOUSE_CELL_CREATE:
 		err = jailhouse_cell_create(
+			(struct jailhouse_cell_init __user *)arg);
+		break;
+	case JAILHOUSE_CELL_RELOAD:
+		err = jailhouse_cell_reload(
 			(struct jailhouse_cell_init __user *)arg);
 		break;
 	case JAILHOUSE_CELL_DESTROY:
