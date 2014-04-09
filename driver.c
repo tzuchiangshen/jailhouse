@@ -470,6 +470,26 @@ unlock_out:
 	return err;
 }
 
+static int get_config(struct jailhouse_cell_cfg cell_cfg,
+		      struct jailhouse_cell_desc **config_ptr)
+{
+	struct jailhouse_cell_desc *config;
+
+	config = kmalloc(cell_cfg.size, GFP_KERNEL | GFP_DMA);
+	if (!config)
+		return -ENOMEM;
+
+	if (copy_from_user(config, (void *)(unsigned long)cell_cfg.address,
+			   cell_cfg.size)) {
+		kfree(config);
+		return -EFAULT;
+	}
+	config->name[JAILHOUSE_CELL_NAME_MAXLEN] = 0;
+
+	*config_ptr = config;
+	return 0;
+}
+
 static int load_image(struct jailhouse_cell_desc *config,
 		      struct jailhouse_preload_image __user *uimage)
 {
@@ -528,17 +548,9 @@ static int jailhouse_cell_create(struct jailhouse_cell_init __user *arg)
 	if (copy_from_user(&cell_init, arg, sizeof(cell_init)))
 		return -EFAULT;
 
-	config = kmalloc(cell_init.config.size, GFP_KERNEL | GFP_DMA);
-	if (!config)
-		return -ENOMEM;
-
-	if (copy_from_user(config,
-			   (void *)(unsigned long)cell_init.config.address,
-			   cell_init.config.size)) {
-		err = -EFAULT;
-		goto kfree_config_out;
-	}
-	config->name[JAILHOUSE_CELL_NAME_MAXLEN] = 0;
+	err = get_config(cell_init.config, &config);
+	if (err)
+		return err;
 
 	if (mutex_lock_interruptible(&lock) != 0) {
 		err = -EINTR;
@@ -626,16 +638,9 @@ static int jailhouse_cell_destroy(const struct jailhouse_cell_cfg __user *arg)
 	if (copy_from_user(&cfg, arg, sizeof(cfg)))
 		return -EFAULT;
 
-	config = kmalloc(cfg.size, GFP_KERNEL | GFP_DMA);
-	if (!config)
-		return -ENOMEM;
-
-	if (copy_from_user(config, (void *)(unsigned long)cfg.address,
-			   cfg.size)) {
-		err = -EFAULT;
-		goto kfree_config_out;
-	}
-	config->name[JAILHOUSE_CELL_NAME_MAXLEN] = 0;
+	err = get_config(cfg, &config);
+	if (err)
+		return err;
 
 	if (mutex_lock_interruptible(&lock) != 0) {
 		err = -EINTR;
