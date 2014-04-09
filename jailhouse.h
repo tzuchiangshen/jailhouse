@@ -21,19 +21,18 @@ struct jailhouse_preload_image {
 	__u64 padding;
 };
 
-struct jailhouse_new_cell {
-	__u64 config_address;
-	__u32 config_size;
+struct jailhouse_cell_cfg {
+	__u64 address;
+	__u32 size;
+};
+
+struct jailhouse_cell_init {
+	struct jailhouse_cell_cfg config;
 	__u32 num_preload_images;
 	struct jailhouse_preload_image image[];
 };
 
-struct jailhouse_cell {
-	__u64 config_address;
-	__u32 config_size;
-};
-
 #define JAILHOUSE_ENABLE		_IOW(0, 0, struct jailhouse_system)
 #define JAILHOUSE_DISABLE		_IO(0, 1)
-#define JAILHOUSE_CELL_CREATE		_IOW(0, 2, struct jailhouse_new_cell)
-#define JAILHOUSE_CELL_DESTROY		_IOW(0, 3, struct jailhouse_cell)
+#define JAILHOUSE_CELL_CREATE		_IOW(0, 2, struct jailhouse_cell_init)
+#define JAILHOUSE_CELL_DESTROY		_IOW(0, 4, struct jailhouse_cell_cfg)

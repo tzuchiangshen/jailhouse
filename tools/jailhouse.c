@@ -109,7 +109,7 @@ static int enable(int argc, char *argv[])
 static int cell_create(int argc, char *argv[])
 {
 	struct jailhouse_preload_image *image;
-	struct jailhouse_new_cell *cell;
+	struct jailhouse_cell_init *cell_init;
 	unsigned int images, arg_num, n;
 	size_t size;
 	int err, fd;
@@ -135,19 +135,19 @@ static int cell_create(int argc, char *argv[])
 		}
 	}
 
-	cell = malloc(sizeof(*cell) + sizeof(*image) * images);
-	if (!cell) {
+	cell_init = malloc(sizeof(*cell_init) + sizeof(*image) * images);
+	if (!cell_init) {
 		fprintf(stderr, "insufficient memory\n");
 		exit(1);
 	}
 
-	cell->config_address = (unsigned long)read_file(argv[3], &size);
-	cell->config_size = size;
-	cell->num_preload_images = images;
+	cell_init->config.address = (unsigned long)read_file(argv[3], &size);
+	cell_init->config.size = size;
+	cell_init->num_preload_images = images;
 
 	arg_num = 4;
 
-	for (n = 0, image = cell->image; n < images; n++, image++) {
+	for (n = 0, image = cell_init->image; n < images; n++, image++) {
 		image->source_address =
 			(unsigned long)read_file(argv[arg_num++], &size);
 		image->size = size;
@@ -168,22 +168,22 @@ static int cell_create(int argc, char *argv[])
 
 	fd = open_dev();
 
-	err = ioctl(fd, JAILHOUSE_CELL_CREATE, cell);
+	err = ioctl(fd, JAILHOUSE_CELL_CREATE, cell_init);
 	if (err)
 		perror("JAILHOUSE_CELL_CREATE");
 
 	close(fd);
-	free((void *)(unsigned long)cell->config_address);
-	for (n = 0, image = cell->image; n < images; n++, image++)
+	free((void *)(unsigned long)cell_init->config.address);
+	for (n = 0, image = cell_init->image; n < images; n++, image++)
 		free((void *)(unsigned long)image->source_address);
-	free(cell);
+	free(cell_init);
 
 	return err;
 }
 
 static int cell_destroy(int argc, char *argv[])
 {
-	struct jailhouse_cell cell;
+	struct jailhouse_cell_cfg config;
 	size_t size;
 	int err, fd;
 
@@ -192,17 +192,17 @@ static int cell_destroy(int argc, char *argv[])
 		exit(1);
 	}
 
-	cell.config_address = (unsigned long)read_file(argv[3], &size);
-	cell.config_size = size;
+	config.address = (unsigned long)read_file(argv[3], &size);
+	config.size = size;
 
 	fd = open_dev();
 
-	err = ioctl(fd, JAILHOUSE_CELL_DESTROY, &cell);
+	err = ioctl(fd, JAILHOUSE_CELL_DESTROY, &config);
 	if (err)
 		perror("JAILHOUSE_CELL_DESTROY");
 
 	close(fd);
-	free((void *)(unsigned long)cell.config_address);
+	free((void *)(unsigned long)config.address);
 
 	return err;
 }

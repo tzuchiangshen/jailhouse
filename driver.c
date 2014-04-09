@@ -516,25 +516,25 @@ static int load_image(struct jailhouse_cell_desc *config,
 	return err;
 }
 
-static int jailhouse_cell_create(struct jailhouse_new_cell __user *arg)
+static int jailhouse_cell_create(struct jailhouse_cell_init __user *arg)
 {
 	struct jailhouse_preload_image __user *image = arg->image;
-	struct jailhouse_new_cell cell_params;
+	struct jailhouse_cell_init cell_init;
 	struct jailhouse_cell_desc *config;
 	unsigned int cpu, n;
 	struct cell *cell;
 	int id, err;
 
-	if (copy_from_user(&cell_params, arg, sizeof(cell_params)))
+	if (copy_from_user(&cell_init, arg, sizeof(cell_init)))
 		return -EFAULT;
 
-	config = kmalloc(cell_params.config_size, GFP_KERNEL | GFP_DMA);
+	config = kmalloc(cell_init.config.size, GFP_KERNEL | GFP_DMA);
 	if (!config)
 		return -ENOMEM;
 
 	if (copy_from_user(config,
-			   (void *)(unsigned long)cell_params.config_address,
-			   cell_params.config_size)) {
+			   (void *)(unsigned long)cell_init.config.address,
+			   cell_init.config.size)) {
 		err = -EFAULT;
 		goto kfree_config_out;
 	}
@@ -555,7 +555,7 @@ static int jailhouse_cell_create(struct jailhouse_new_cell __user *arg)
 		goto unlock_out;
 	}
 
-	for (n = cell_params.num_preload_images; n > 0; n--, image++) {
+	for (n = cell_init.num_preload_images; n > 0; n--, image++) {
 		err = load_image(config, image);
 		if (err)
 			goto unlock_out;
@@ -615,24 +615,23 @@ error_put_cell_obj:
 	goto unlock_out;
 }
 
-static int jailhouse_cell_destroy(const char __user *arg)
+static int jailhouse_cell_destroy(const struct jailhouse_cell_cfg __user *arg)
 {
 	struct jailhouse_cell_desc *config;
-	struct jailhouse_cell cell_params;
+	struct jailhouse_cell_cfg cfg;
 	struct cell *cell;
 	unsigned int cpu;
 	int err;
 
-	if (copy_from_user(&cell_params, arg, sizeof(cell_params)))
+	if (copy_from_user(&cfg, arg, sizeof(cfg)))
 		return -EFAULT;
 
-	config = kmalloc(cell_params.config_size, GFP_KERNEL | GFP_DMA);
+	config = kmalloc(cfg.size, GFP_KERNEL | GFP_DMA);
 	if (!config)
 		return -ENOMEM;
 
-	if (copy_from_user(config,
-			   (void *)(unsigned long)cell_params.config_address,
-			   cell_params.config_size)) {
+	if (copy_from_user(config, (void *)(unsigned long)cfg.address,
+			   cfg.size)) {
 		err = -EFAULT;
 		goto kfree_config_out;
 	}
@@ -695,10 +694,11 @@ static long jailhouse_ioctl(struct file *file, unsigned int ioctl,
 		break;
 	case JAILHOUSE_CELL_CREATE:
 		err = jailhouse_cell_create(
-			(struct jailhouse_new_cell __user *)arg);
+			(struct jailhouse_cell_init __user *)arg);
 		break;
 	case JAILHOUSE_CELL_DESTROY:
-		err = jailhouse_cell_destroy((const char __user *)arg);
+		err = jailhouse_cell_destroy(
+			(struct jailhouse_cell_cfg __user *)arg);
 		break;
 	default:
 		err = -EINVAL;
