@@ -136,7 +136,23 @@ desired cell. This command will destroy the apic-demo:
 
     jailhouse cell destroy /path/to/apic-demo.cell
 
-Jailhouse is can also be stopped completely again:
+Note that the first destruction request on the apic-demo cell will fail. The
+reason is that this cell contains logic to demonstrate an ordered shutdown as
+well as the ability of a cell to reject shutdown requests.
+
+The apic-demo cell has another special property for demonstration purposes: As
+long as it is running, no cell reconfigurations can be performed - the
+apic-demo locks the hypervisor in this regard. In order to destroy another cell
+or create an additional one, shut down the apic-demo first.
+
+While cell configurations are locked, it is still possible, though, to reload
+the content of existing cell (provided they accept their shutdown first). To
+reload the tiny-demo, issue the following command:
+
+    jailhouse cell reload /path/to/tiny-demo.cell /path/to/tiny-demo.bin \
+        -l 0xf0000
+
+Finally, Jailhouse is can be stopped completely again:
 
     jailhouse disable
 
